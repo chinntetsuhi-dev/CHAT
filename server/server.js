@@ -1,10 +1,12 @@
 import express from "express";
 import cors from "cors";
 import { WebSocketServer } from "ws";
-import { randomUUID } from "crypto";
+import { randomUUID, randomBytes } from "crypto";
 
 const app = express();
 app.use(cors());
+app.use(express.json());
+
 app.get("/", (_, res) => {
   res.type("text/plain").send("Retro 1v1 Chat WS server is running.");
 });
@@ -33,9 +35,16 @@ function broadcast(roomId, payload, exceptWs) {
   }
 }
 
-function safeJson(str) {
-  try { return JSON.parse(str); } catch { return null; }
-}
+function safeJson(str) { try { return JSON.parse(str); } catch { return null; } }
+
+// --- 新增：房间列表 API（给大厅用） ---
+app.get("/api/rooms", (_req, res) => {
+  // 只返回“当前有人连接”的活跃房间 ID
+  const list = Array.from(rooms.entries())
+    .filter(([_, set]) => set && set.size > 0)
+    .map(([roomId]) => roomId);
+  res.json(list);
+});
 
 wss.on("connection", (ws) => {
   meta.set(ws, { id: randomUUID(), room: null, name: "Anonymous" });
@@ -48,7 +57,6 @@ wss.on("connection", (ws) => {
       const roomId = String(msg.room || "").slice(0, 64);
       const name = String(msg.name || "Anonymous").slice(0, 32);
 
-      // create / join
       if (!rooms.has(roomId)) rooms.set(roomId, new Set());
       const set = rooms.get(roomId);
 
@@ -111,9 +119,9 @@ wss.on("connection", (ws) => {
 // 心跳定时器
 const interval = setInterval(() => {
   for (const ws of wss.clients) {
-    if (ws.isAlive === false) return ws.terminate();
+    if (ws.isAlive === false) { ws.terminate(); continue; }
     ws.isAlive = false;
-    ws.ping();
+    try { ws.ping(); } catch {}
   }
 }, 30000);
 
