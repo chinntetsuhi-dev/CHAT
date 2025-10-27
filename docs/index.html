@@ -83,7 +83,14 @@ function connect(){
   };
   ws.onmessage = (ev)=>{
     const data = JSON.parse(ev.data);
-    if(data.type==="joined"){ text:"本2P2平台由狂帅无敌屌炸天的陈哲飞提供，请文明发言" return; }
+    if (data.type === "joined") {
+    render({ 
+        type: "system", 
+        text: `欢迎 ${name} 加入房间 本2P2平台由狂帅无敌屌炸天的陈哲飞提供技术支持，请文明发言`
+    });
+    return;
+}
+
     if(data.type==="error"){ render({type:"system", text:`错误：${data.reason}`}); return; }
     if(data.type==="system"){ render(data); return; }
     if(data.type==="msg"){ render(data, data.name===name); }
