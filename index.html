@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Retro 1v1 Chat</title>
+<style>
+  :root{--bg:#0b0f0c;--panel:#0e1310;--line:#213b2a;--txt:#c7f7c1;--muted:#86b28d;--accent:#91ff75}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.5 ui-monospace,Consolas,monospace;height:100dvh;display:grid;grid-template-rows:auto 1fr auto}
+  header{padding:10px 14px;background:linear-gradient(180deg,#0e1712,#0a0f0c);border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center}
+  .brand{color:var(--accent);font-weight:700;letter-spacing:.08em}
+  .room-line{margin-left:auto;color:var(--muted);font-size:12px}
+  #log{padding:12px;overflow:auto;background:
+      repeating-linear-gradient(180deg,rgba(145,255,117,.03) 0 2px,transparent 2px 4px),
+      linear-gradient(180deg,rgba(145,255,117,.02),transparent 60%)}
+  .msg{max-width:72ch;margin:8px 0;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
+  .me{border-color:#2d6b3e}
+  .meta{font-size:12px;color:var(--muted);margin-bottom:4px}
+  form{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line);background:#0a0f0c}
+  input,button{font:inherit;color:var(--txt);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px}
+  button{cursor:pointer;background:#0f1a14}
+  .mono{color:var(--accent);border:none;background:transparent;cursor:copy}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">▮ Retro 1v1 Chat</div>
+  <div class="room-line">
+    Room: <button id="roomCopy" class="mono"></button>
+    <span> | </span>
+    User: <span id="userName" class="mono"></span>
+  </div>
+</header>
+<div id="log"></div>
+<form id="form">
+  <input id="input" placeholder="输入消息…（Shift+Enter 换行）" maxlength="2000" style="flex:1">
+  <button id="sendBtn" type="submit">发送</button>
+</form>
+
+<script>
+
+const SERVER_URL = "wss://chat-pmq6.onrender.com";
+
+
+// 房间
+const params = new URLSearchParams(location.search);
+let room = params.get('room');
+if(!room){
+  room = Math.random().toString(36).slice(2,10);
+  params.set('room', room);
+  history.replaceState(null, '', location.pathname + '?' + params.toString());
+}
+const roomLink = location.href;
+const roomCopyBtn = document.getElementById('roomCopy');
+roomCopyBtn.textContent = roomLink;
+roomCopyBtn.onclick = async ()=>{ await navigator.clipboard.writeText(roomLink); roomCopyBtn.textContent="已复制 ✓"; setTimeout(()=>roomCopyBtn.textContent=roomLink,1200); };
+
+// 名字
+let name = localStorage.getItem('retro_name');
+if(!name){ name = prompt('请输入你的昵称', 'Player_' + Math.random().toString(36).slice(2,6)) || 'Anonymous'; localStorage.setItem('retro_name', name); }
+document.getElementById('userName').textContent = name;
+
+// UI
+const logEl = document.getElementById('log');
+function render(m, me=false){
+  const el = document.createElement('div'); el.className = 'msg' + (me ? ' me' : '');
+  const meta = document.createElement('div'); meta.className='meta';
+  if(m.type==="system") meta.textContent = m.text;
+  else meta.textContent = `${m.name} @ ${new Date(m.ts||Date.now()).toLocaleTimeString()}`;
+  const body = document.createElement('div'); body.textContent = m.text || '';
+  el.appendChild(meta); if(m.type!=="system") el.appendChild(body);
+  logEl.appendChild(el); logEl.scrollTop = logEl.scrollHeight;
+}
+
+// 连接
+let ws;
+function connect(){
+  ws = new WebSocket(SERVER_URL);
+  ws.onopen = ()=> {
+    ws.send(JSON.stringify({type:"join", room, name}));
+    render({type:"system", text:`欢迎使用由陈哲飞支持的远程无痕聊天平台，已连接到服务器。房间：${room}`});
+  };
+  ws.onmessage = (ev)=>{
+    const data = JSON.parse(ev.data);
+    if(data.type==="joined"){ text:"本2P2平台由狂帅无敌屌炸天的陈哲飞提供，请文明发言" return; }
+    if(data.type==="error"){ render({type:"system", text:`错误：${data.reason}`}); return; }
+    if(data.type==="system"){ render(data); return; }
+    if(data.type==="msg"){ render(data, data.name===name); }
+  };
+  ws.onclose = ()=> render({type:"system", text:"连接已断开，5秒后自动重连…"}) || setTimeout(connect, 5000);
+}
+connect();
+
+// 发送
+const form = document.getElementById('form');
+const input = document.getElementById('input');
+form.addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const text = input.value.trim(); if(!text) return;
+  ws?.readyState===1 && ws.send(JSON.stringify({type:"msg", text}));
+  input.value = ""; input.focus();
+});
+input.addEventListener('keydown', (e)=>{
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); document.getElementById('sendBtn').click(); }
+});
+</script>
+</body>
+</html>
