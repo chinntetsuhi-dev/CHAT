@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Retro 1v1 Chat</title>
+<title>Retro Chat (哲飞1.2版 请在拥有jvm环境下运行)</title>
 <style>
   :root{--bg:#0b0f0c;--panel:#0e1310;--line:#213b2a;--txt:#c7f7c1;--muted:#86b28d;--accent:#91ff75}
   *{box-sizing:border-box}
@@ -42,17 +42,20 @@
 </form>
 
 <script>
+console.log("CHAT vSAFE"); // 确认新版本
+
 const SERVER_URL = "wss://chat-pmq6.onrender.com";
 
-// ❗没有 room 就返回大厅（不自动创建）
+// 没有 room 就停在这里给出提示（不跳转，避免 file:// 相对路径导致回环）
 const params = new URLSearchParams(location.search);
 let room = params.get('room');
 if(!room){
-  location.replace('index.html');
-  throw new Error('no-room-redirect');
+  document.getElementById('log').innerHTML =
+    '<div class="msg"><div class="meta">系统</div><div>没有房间ID。请先在 <a class="link" href="index.html">大厅</a> 创建或输入房间后进入。</div></div>';
+  document.getElementById('form').style.display = 'none';
+  throw new Error('no-room'); // 终止后续逻辑
 }
 
-// 链接复制
 const roomLink = location.href;
 const roomCopyBtn = document.getElementById('roomCopy');
 roomCopyBtn.textContent = roomLink;

@@ -3,111 +3,106 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Retro 1v1 Chat</title>
+<title>Retro Chat (哲飞1.2版 请在拥有jvm环境下运行) </title>
 <style>
   :root{--bg:#0b0f0c;--panel:#0e1310;--line:#213b2a;--txt:#c7f7c1;--muted:#86b28d;--accent:#91ff75}
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.5 ui-monospace,Consolas,monospace;height:100dvh;display:grid;grid-template-rows:auto 1fr auto}
-  header{padding:10px 14px;background:linear-gradient(180deg,#0e1712,#0a0f0c);border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center}
+  body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.5 ui-monospace,Consolas,monospace;min-height:100dvh;display:grid;grid-template-rows:auto 1fr auto}
+  header{padding:12px 16px;background:linear-gradient(180deg,#0e1712,#0a0f0c);border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center}
   .brand{color:var(--accent);font-weight:700;letter-spacing:.08em}
-  .room-line{margin-left:auto;color:var(--muted);font-size:12px}
-  #log{padding:12px;overflow:auto;background:
-      repeating-linear-gradient(180deg,rgba(145,255,117,.03) 0 2px,transparent 2px 4px),
-      linear-gradient(180deg,rgba(145,255,117,.02),transparent 60%)}
-  .msg{max-width:72ch;margin:8px 0;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
-  .me{border-color:#2d6b3e}
-  .meta{font-size:12px;color:var(--muted);margin-bottom:4px}
-  form{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line);background:#0a0f0c}
-  input,button{font:inherit;color:var(--txt);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px}
+  main{padding:16px;display:grid;gap:14px;align-content:start}
+  .card{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:14px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  input,button{font:inherit;color:var(--txt);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px}
   button{cursor:pointer;background:#0f1a14}
-  .mono{color:var(--accent);border:none;background:transparent;cursor:copy}
-  a.link{color:var(--accent);text-decoration:none;border-bottom:1px dashed var(--accent)}
+  .list{display:grid;gap:8px}
+  .item{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:8px;padding:10px;background:#0b120e}
+  .muted{color:var(--muted);font-size:12px}
 </style>
 </head>
 <body>
 <header>
-  <div class="brand">▮ Retro 1v1 Chat</div>
-  <div class="room-line">
-    Room: <button id="roomCopy" class="mono"></button>
-    <span> | </span>
-    User: <span id="userName" class="mono"></span>
-    <span> | </span>
-    <a class="link" href="index.html">返回大厅</a>
-  </div>
+  <div class="brand">▮ Retro Chat · 大厅（手动版 vSAFE）</div>
 </header>
-<div id="log"></div>
-<form id="form">
-  <input id="input" placeholder="输入消息…（Shift+Enter 换行）" maxlength="2000" style="flex:1">
-  <button id="sendBtn" type="submit">发送</button>
-</form>
+<main>
+  <div class="card">
+    <div class="row" style="gap:12px">
+      <button id="createBtn">＋ 创建房间（8位ID）</button>
+      <span class="muted">不会自动跳转；只能手动进入</span>
+    </div>
+    <div class="row" style="margin-top:10px;gap:8px">
+      <input id="joinInput" placeholder="输入房间ID（8位）" maxlength="16" style="min-width:260px">
+      <button id="joinBtn">进入房间</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <div>当前房间列表</div>
+      <button id="refreshBtn">刷新</button>
+    </div>
+    <div id="list" class="list" style="margin-top:10px"></div>
+    <div id="empty" class="muted" style="display:none;margin-top:8px">暂无房间，请手动创建或输入ID。</div>
+  </div>
+</main>
+
+<footer class="muted" style="padding:10px 16px;border-top:1px solid var(--line)">
+  提示：进入房间后复制地址栏链接发给对方即可 1v1。
+</footer>
 
 <script>
-const SERVER_URL = "wss://chat-pmq6.onrender.com";
+console.log("LOBBY vSAFE"); // 用于确认你加载的是新版本
 
-// 房间（❗不再自动创建，没有 room 就回大厅）
-const params = new URLSearchParams(location.search);
-let room = params.get('room');
-if(!room){
-  location.replace('index.html'); // 直接返回大厅，避免自动建房
-  // 防止后续代码继续执行
-  throw new Error('no-room-redirect');
-}
-const roomLink = location.href;
-const roomCopyBtn = document.getElementById('roomCopy');
-roomCopyBtn.textContent = roomLink;
-roomCopyBtn.onclick = async ()=>{ await navigator.clipboard.writeText(roomLink); roomCopyBtn.textContent="已复制 ✓"; setTimeout(()=>roomCopyBtn.textContent=roomLink,1200); };
+const API_BASE = "https://chat-pmq6.onrender.com"; // 仅用于线上拉列表；本地 file:// 下失败也无所谓
+const CHAT_PAGE = "chat.html";
 
-// 名字
-let name = localStorage.getItem('retro_name');
-if(!name){ name = prompt('请输入你的昵称', 'Player_' + Math.random().toString(36).slice(2,6)) || 'Anonymous'; localStorage.setItem('retro_name', name); }
-document.getElementById('userName').textContent = name;
+function genRoom(){ return Math.random().toString(36).slice(2,10); }
+function gotoRoom(room){ location.href = `${CHAT_PAGE}?room=${encodeURIComponent(room)}`; }
 
-// UI
-const logEl = document.getElementById('log');
-function render(m, me=false){
-  const el = document.createElement('div'); el.className = 'msg' + (me ? ' me' : '');
-  const meta = document.createElement('div'); meta.className='meta';
-  if(m.type==="system") meta.textContent = m.text;
-  else meta.textContent = `${m.name} @ ${new Date(m.ts||Date.now()).toLocaleTimeString()}`;
-  const body = document.createElement('div'); body.textContent = m.text || '';
-  el.appendChild(meta); if(m.type!=="system") el.appendChild(body);
-  logEl.appendChild(el); logEl.scrollTop = logEl.scrollHeight;
+// 列表（本地 file:// 打开时，拉接口可能会因为 CORS/网络失败，没关系，只是不显示列表）
+async function fetchRooms(){
+  try{
+    const res = await fetch(`${API_BASE}/api/rooms`, {cache:'no-store'});
+    if(!res.ok) throw new Error('bad status');
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  }catch{
+    return []; // 失败就当作没有房间，绝不自动创建/跳转
+  }
 }
 
-// 连接
-let ws;
-function connect(){
-  ws = new WebSocket(SERVER_URL);
-  ws.onopen = ()=> {
-    ws.send(JSON.stringify({type:"join", room, name}));
-    render({type:"system", text:`欢迎使用由陈哲飞支持的远程无痕聊天平台，已连接到服务器。房间：${room}`});
-  };
-  ws.onmessage = (ev)=>{
-    const data = JSON.parse(ev.data);
-    if (data.type === "joined") {
-      render({type:"system", text:`欢迎 ${name} 加入房间 本2P2平台由狂帅无敌屌炸天的陈哲飞提供技术支持，请文明发言`});
-      return;
-    }
-    if(data.type==="error"){ render({type:"system", text:`错误：${data.reason}`}); return; }
-    if(data.type==="system"){ render(data); return; }
-    if(data.type==="msg"){ render(data, data.name===name); }
-  };
-  ws.onclose = ()=> render({type:"system", text:"连接已断开，5秒后自动重连…"}) || setTimeout(connect, 5000);
-}
-connect();
+const listEl = document.getElementById('list');
+const emptyEl = document.getElementById('empty');
 
-// 发送
-const form = document.getElementById('form');
-const input = document.getElementById('input');
-form.addEventListener('submit', (e)=>{
-  e.preventDefault();
-  const text = input.value.trim(); if(!text) return;
-  ws?.readyState===1 && ws.send(JSON.stringify({type:"msg", text}));
-  input.value = ""; input.focus();
+function renderList(rooms){
+  listEl.innerHTML = '';
+  emptyEl.style.display = rooms.length ? 'none' : '';
+  rooms.forEach(id=>{
+    const row = document.createElement('div');
+    row.className='item';
+    const left = document.createElement('div');
+    left.textContent = id;
+    const btn = document.createElement('button');
+    btn.textContent = '进入';
+    btn.onclick = ()=> gotoRoom(id);
+    row.append(left, btn);
+    listEl.appendChild(row);
+  });
+}
+
+async function load(){ renderList(await fetchRooms()); }
+document.getElementById('refreshBtn').onclick = load;
+document.getElementById('createBtn').onclick = ()=> gotoRoom(genRoom());
+document.getElementById('joinBtn').onclick = ()=>{
+  const v = (document.getElementById('joinInput').value || '').trim();
+  if(!v){ alert('请输入房间ID'); return; }
+  gotoRoom(v);
+};
+document.getElementById('joinInput').addEventListener('keydown', e=>{
+  if(e.key==='Enter') document.getElementById('joinBtn').click();
 });
-input.addEventListener('keydown', (e)=>{
-  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); document.getElementById('sendBtn').click(); }
-});
+
+load(); // 只渲染列表，不自动进入
 </script>
 </body>
 </html>
