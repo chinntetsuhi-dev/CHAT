@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Retro Chat (哲飞1.2版 请在拥有jvm环境下运行) </title>
+<title>Retro Chat (哲飞1.2版 大厅)</title>
 <style>
   :root{--bg:#0b0f0c;--panel:#0e1310;--line:#213b2a;--txt:#c7f7c1;--muted:#86b28d;--accent:#91ff75}
   *{box-sizing:border-box}
@@ -13,7 +13,7 @@
   main{padding:16px;display:grid;gap:14px;align-content:start}
   .card{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:14px}
   .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-  input,button{font:inherit;color:var(--txt);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px}
+  input,button,select{font:inherit;color:var(--txt);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px}
   button{cursor:pointer;background:#0f1a14}
   .list{display:grid;gap:8px}
   .item{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:8px;padding:10px;background:#0b120e}
@@ -22,7 +22,7 @@
 </head>
 <body>
 <header>
-  <div class="brand">▮ Retro Chat · 大厅（手动版 vSAFE）</div>
+  <div class="brand">▮ Retro Chat 大厅（哲飞1.2B）</div>
 </header>
 <main>
   <div class="card">
@@ -37,42 +37,48 @@
   </div>
 
   <div class="card">
-    <div class="row" style="justify-content:space-between">
-      <div>当前房间列表</div>
+    <div class="row" style="justify-content:space-between;gap:12px">
+      <div class="row">
+        <div>房间列表</div>
+        <select id="scopeSel" title="筛选范围">
+          <option value="active">只看在线</option>
+          <option value="all">全部房间</option>
+        </select>
+      </div>
       <button id="refreshBtn">刷新</button>
     </div>
     <div id="list" class="list" style="margin-top:10px"></div>
-    <div id="empty" class="muted" style="display:none;margin-top:8px">暂无房间，请手动创建或输入ID。</div>
+    <div id="empty" class="muted" style="display:none;margin-top:8px">暂无房间，请创建或手动输入ID。</div>
   </div>
 </main>
 
 <footer class="muted" style="padding:10px 16px;border-top:1px solid var(--line)">
-  提示：进入房间后复制地址栏链接发给对方即可 1v1。
+  提示：进入房间后复制地址栏链接给对方即可 1v1。
 </footer>
 
 <script>
-console.log("LOBBY vSAFE"); // 用于确认你加载的是新版本
+console.log("LOBBY vSAFE-B");
 
-const API_BASE = "https://chat-pmq6.onrender.com"; // 仅用于线上拉列表；本地 file:// 下失败也无所谓
+const API_BASE = "https://chat-pmq6.onrender.com"; // 换成你部署服务端的域名
 const CHAT_PAGE = "chat.html";
 
 function genRoom(){ return Math.random().toString(36).slice(2,10); }
 function gotoRoom(room){ location.href = `${CHAT_PAGE}?room=${encodeURIComponent(room)}`; }
 
-// 列表（本地 file:// 打开时，拉接口可能会因为 CORS/网络失败，没关系，只是不显示列表）
-async function fetchRooms(){
+async function fetchRooms(scope='active'){
   try{
-    const res = await fetch(`${API_BASE}/api/rooms`, {cache:'no-store'});
+    const res = await fetch(`${API_BASE}/api/rooms?scope=${encodeURIComponent(scope)}`, {cache:'no-store'});
     if(!res.ok) throw new Error('bad status');
     const data = await res.json();
     return Array.isArray(data) ? data : [];
   }catch{
-    return []; // 失败就当作没有房间，绝不自动创建/跳转
+    return [];
   }
 }
 
 const listEl = document.getElementById('list');
 const emptyEl = document.getElementById('empty');
+const scopeSel = document.getElementById('scopeSel');
 
 function renderList(rooms){
   listEl.innerHTML = '';
@@ -90,7 +96,12 @@ function renderList(rooms){
   });
 }
 
-async function load(){ renderList(await fetchRooms()); }
+async function load(){
+  const scope = scopeSel.value;
+  const rooms = await fetchRooms(scope);
+  renderList(rooms);
+}
+
 document.getElementById('refreshBtn').onclick = load;
 document.getElementById('createBtn').onclick = ()=> gotoRoom(genRoom());
 document.getElementById('joinBtn').onclick = ()=>{
@@ -101,8 +112,9 @@ document.getElementById('joinBtn').onclick = ()=>{
 document.getElementById('joinInput').addEventListener('keydown', e=>{
   if(e.key==='Enter') document.getElementById('joinBtn').click();
 });
+scopeSel.addEventListener('change', load);
 
-load(); // 只渲染列表，不自动进入
+load(); // 初始化渲染
 </script>
 </body>
 </html>
