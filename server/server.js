@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import { WebSocketServer } from "ws";
-import { randomUUID, randomBytes } from "crypto";
+import { randomUUID } from "crypto";
 
 const app = express();
 app.use(cors());
@@ -37,9 +37,8 @@ function broadcast(roomId, payload, exceptWs) {
 
 function safeJson(str) { try { return JSON.parse(str); } catch { return null; } }
 
-// --- 新增：房间列表 API（给大厅用） ---
+// 房间列表 API：返回当前“有人在线”的房间ID
 app.get("/api/rooms", (_req, res) => {
-  // 只返回“当前有人连接”的活跃房间 ID
   const list = Array.from(rooms.entries())
     .filter(([_, set]) => set && set.size > 0)
     .map(([roomId]) => roomId);
@@ -67,7 +66,7 @@ wss.on("connection", (ws) => {
         return;
       }
 
-      // 迁移：如果之前在别的房间，先移除
+      // 如果之前在别的房间，先移除
       const m = meta.get(ws);
       if (m.room && rooms.has(m.room)) {
         rooms.get(m.room).delete(ws);
@@ -88,15 +87,9 @@ wss.on("connection", (ws) => {
       const text = String(msg.text || "").trim();
       if (!text || text.length > 2000) return;
 
-      const payload = {
-        type: "msg",
-        name: m.name,
-        text,
-        ts: Date.now()
-      };
-      // 回显给自己 + 发给对方
-      ws.send(JSON.stringify(payload));
-      broadcast(m.room, payload, ws);
+      const payload = { type: "msg", name: m.name, text, ts: Date.now() };
+      ws.send(JSON.stringify(payload));         // 回显给自己
+      broadcast(m.room, payload, ws);           // 发给对方
       return;
     }
   });
@@ -111,7 +104,7 @@ wss.on("connection", (ws) => {
     }
   });
 
-  // 心跳，避免闲置断开
+  // 心跳
   ws.isAlive = true;
   ws.on("pong", () => { ws.isAlive = true; });
 });
