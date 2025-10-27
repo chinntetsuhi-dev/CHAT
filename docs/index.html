@@ -79,7 +79,7 @@ function connect(){
   ws = new WebSocket(SERVER_URL);
   ws.onopen = ()=> {
     ws.send(JSON.stringify({type:"join", room, name}));
-    render({type:"system", text:`已连接到服务器。房间：${room}`});
+    render({type:"system", text:`欢迎使用由陈哲飞支持的远程无痕聊天平台，已连接到服务器。房间：${room}`});
   };
   ws.onmessage = (ev)=>{
     const data = JSON.parse(ev.data);
