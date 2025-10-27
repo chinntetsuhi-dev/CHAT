@@ -21,6 +21,7 @@
   input,button{font:inherit;color:var(--txt);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px}
   button{cursor:pointer;background:#0f1a14}
   .mono{color:var(--accent);border:none;background:transparent;cursor:copy}
+  a.link{color:var(--accent);text-decoration:none;border-bottom:1px dashed var(--accent)}
 </style>
 </head>
 <body>
@@ -30,6 +31,8 @@
     Room: <button id="roomCopy" class="mono"></button>
     <span> | </span>
     User: <span id="userName" class="mono"></span>
+    <span> | </span>
+    <a class="link" href="index.html">返回大厅</a>
   </div>
 </header>
 <div id="log"></div>
@@ -41,16 +44,15 @@
 <script>
 const SERVER_URL = "wss://chat-pmq6.onrender.com";
 
-// 房间
-function genRoomId(){ return Math.random().toString(36).slice(2,10); }
+// ❗没有 room 就返回大厅（不自动创建）
 const params = new URLSearchParams(location.search);
 let room = params.get('room');
 if(!room){
-  // 没有 room 参数也允许直接聊天：自动生成并写回地址栏
-  room = genRoomId();
-  params.set('room', room);
-  history.replaceState(null, '', location.pathname + '?' + params.toString());
+  location.replace('index.html');
+  throw new Error('no-room-redirect');
 }
+
+// 链接复制
 const roomLink = location.href;
 const roomCopyBtn = document.getElementById('roomCopy');
 roomCopyBtn.textContent = roomLink;
