@@ -78,27 +78,44 @@ function render(m, me=false){
   logEl.appendChild(el); logEl.scrollTop = logEl.scrollHeight;
 }
 
-// 连接
 let ws;
+let reconnectTimer = null;
+
 function connect(){
-  ws = new WebSocket(SERVER_URL);
+  try{
+    ws = new WebSocket(SERVER_URL);
+  }catch(e){
+    render({type:"system", text:`创建 WS 失败：${e?.message||e}`});
+    return;
+  }
+
   ws.onopen = ()=> {
+    render({type:"system", text:`正在加入房间：${room} …`});
     ws.send(JSON.stringify({type:"join", room, name}));
-    render({type:"system", text:`欢迎使用由陈哲飞支持的远程无痕聊天平台，已连接到服务器。房间：${room}`});
+    render({type:"system", text:`已连接到服务器（${SERVER_URL}）`});
   };
+
   ws.onmessage = (ev)=>{
-    const data = JSON.parse(ev.data);
-    if (data.type === "joined") {
-      render({type:"system", text:`欢迎 ${name} 加入房间 本2P2平台由狂帅无敌屌炸天的陈哲飞提供技术支持，请文明发言`});
-      return;
-    }
-    if(data.type==="error"){ render({type:"system", text:`错误：${data.reason}`}); return; }
-    if(data.type==="system"){ render(data); return; }
-    if(data.type==="msg"){ render(data, data.name===name); }
+    let data; try{ data = JSON.parse(ev.data); }catch{ return; }
+    if (data.type === "joined") { render({type:"system", text:`已加入房间：${data.room}（你：${data.you}）`}); return; }
+    if (data.type === "error")  { render({type:"system", text:`错误：${data.reason}`}); return; }
+    if (data.type === "system") { render(data); return; }
+    if (data.type === "msg")    { render(data, data.name===name); return; }
+    render({type:"system", text:`收到未知消息类型：${data.type||'无'}`});
   };
-  ws.onclose = ()=> render({type:"system", text:"连接已断开，5秒后自动重连…"}) || setTimeout(connect, 5000);
+
+  ws.onerror = (e)=> {
+    render({type:"system", text:`WS 发生错误：${e?.message||e}（可能被浏览器策略/扩展或网络拦截）`});
+  };
+
+  ws.onclose = (ev)=> {
+    render({type:"system", text:`连接已断开（code=${ev.code}）。5秒后自动重连…`});
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(connect, 5000);
+  };
 }
 connect();
+
 
 // 发送
 const form = document.getElementById('form');
