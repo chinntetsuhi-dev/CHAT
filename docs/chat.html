@@ -97,7 +97,7 @@ function connect(){
 
   ws.onmessage = (ev)=>{
     let data; try{ data = JSON.parse(ev.data); }catch{ return; }
-    if (data.type === "joined") { render({type:"system", text:`已加入房间：${data.room}（你：${data.you}）`}); return; }
+    if (data.type === "joined") { render({type:"system", text:`已加入房间：${data.room}（欢迎加入由狂帅无敌吊炸天的陈哲飞提供技术支持的WebSocket平台）`}); return; }
     if (data.type === "error")  { render({type:"system", text:`错误：${data.reason}`}); return; }
     if (data.type === "system") { render(data); return; }
     if (data.type === "msg")    { render(data, data.name===name); return; }
