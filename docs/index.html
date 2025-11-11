@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="ja">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Retro Chat (哲飞1.2版 大厅)</title>
+<title>Retro Chat（哲飛1.2版 ロビー）</title>
 <style>
   :root{--bg:#0b0f0c;--panel:#0e1310;--line:#213b2a;--txt:#c7f7c1;--muted:#86b28d;--accent:#91ff75}
   *{box-sizing:border-box}
@@ -22,44 +22,44 @@
 </head>
 <body>
 <header>
-  <div class="brand">▮ Retro Chat 大厅（哲飞1.2B）</div>
+  <div class="brand">▮ Retro Chat ロビー（哲飛1.2B）</div>
 </header>
 <main>
   <div class="card">
     <div class="row" style="gap:12px">
-      <button id="createBtn">＋ 创建房间（8位ID）</button>
-      <span class="muted">不会自动跳转；只能手动进入</span>
+      <button id="createBtn">＋ ルームを作成（8桁ID）</button>
+      <span class="muted">自動で移動しません。手動で入室してください。</span>
     </div>
     <div class="row" style="margin-top:10px;gap:8px">
-      <input id="joinInput" placeholder="输入房间ID（8位）" maxlength="16" style="min-width:260px">
-      <button id="joinBtn">进入房间</button>
+      <input id="joinInput" placeholder="ルームIDを入力（8桁）" maxlength="16" style="min-width:260px">
+      <button id="joinBtn">入室</button>
     </div>
   </div>
 
   <div class="card">
     <div class="row" style="justify-content:space-between;gap:12px">
       <div class="row">
-        <div>房间列表</div>
-        <select id="scopeSel" title="筛选范围">
-          <option value="active">只看在线</option>
-          <option value="all">全部房间</option>
+        <div>ルーム一覧</div>
+        <select id="scopeSel" title="フィルター範囲">
+          <option value="active">オンラインのみ表示</option>
+          <option value="all">すべてのルーム</option>
         </select>
       </div>
-      <button id="refreshBtn">刷新</button>
+      <button id="refreshBtn">更新</button>
     </div>
     <div id="list" class="list" style="margin-top:10px"></div>
-    <div id="empty" class="muted" style="display:none;margin-top:8px">暂无房间，请创建或手动输入ID。</div>
+    <div id="empty" class="muted" style="display:none;margin-top:8px">ルームがありません。新規作成するかIDを入力してください。</div>
   </div>
 </main>
 
 <footer class="muted" style="padding:10px 16px;border-top:1px solid var(--line)">
-  提示：进入房间后复制地址栏链接给对方即可 1v1。
+  ヒント：ルーム入室後、アドレスバーのリンクを相手に送ると1対1チャットができます。
 </footer>
 
 <script>
 console.log("LOBBY vSAFE-B");
 
-const API_BASE = "https://chat-pmq6.onrender.com"; // 换成你部署服务端的域名
+const API_BASE = "https://chat-pmq6.onrender.com";
 const CHAT_PAGE = "chat.html";
 
 function genRoom(){ return Math.random().toString(36).slice(2,10); }
@@ -89,7 +89,7 @@ function renderList(rooms){
     const left = document.createElement('div');
     left.textContent = id;
     const btn = document.createElement('button');
-    btn.textContent = '进入';
+    btn.textContent = '入る';
     btn.onclick = ()=> gotoRoom(id);
     row.append(left, btn);
     listEl.appendChild(row);
@@ -106,7 +106,7 @@ document.getElementById('refreshBtn').onclick = load;
 document.getElementById('createBtn').onclick = ()=> gotoRoom(genRoom());
 document.getElementById('joinBtn').onclick = ()=>{
   const v = (document.getElementById('joinInput').value || '').trim();
-  if(!v){ alert('请输入房间ID'); return; }
+  if(!v){ alert('ルームIDを入力してください'); return; }
   gotoRoom(v);
 };
 document.getElementById('joinInput').addEventListener('keydown', e=>{
@@ -114,7 +114,7 @@ document.getElementById('joinInput').addEventListener('keydown', e=>{
 });
 scopeSel.addEventListener('change', load);
 
-load(); // 初始化渲染
+load();
 </script>
 </body>
 </html>

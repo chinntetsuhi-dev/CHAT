@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="ja">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Retro Chat (哲飞1.2版 请在拥有jvm环境下运行)</title>
+<title>Retro Chat（哲飛1.2版 JVM環境で実行してください）</title>
 <style>
   :root{--bg:#0b0f0c;--panel:#0e1310;--line:#213b2a;--txt:#c7f7c1;--muted:#86b28d;--accent:#91ff75}
   *{box-sizing:border-box}
@@ -26,44 +26,44 @@
 </head>
 <body>
 <header>
-  <div class="brand">▮ Retro Chat (哲飞1.2版 请在拥有jvm环境下运行)</div>
+  <div class="brand">▮ Retro Chat（哲飛1.2版 JVM環境で実行してください）</div>
   <div class="room-line">
-    Room: <button id="roomCopy" class="mono"></button>
+    ルーム: <button id="roomCopy" class="mono"></button>
     <span> | </span>
-    User: <span id="userName" class="mono"></span>
+    ユーザー: <span id="userName" class="mono"></span>
     <span> | </span>
-    <a class="link" href="index.html">返回大厅</a>
+    <a class="link" href="index.html">ロビーに戻る</a>
   </div>
 </header>
 <div id="log"></div>
 <form id="form">
-  <input id="input" placeholder="输入消息…（Shift+Enter 换行）" maxlength="2000" style="flex:1">
-  <button id="sendBtn" type="submit">发送</button>
+  <input id="input" placeholder="メッセージを入力…（Shift+Enterで改行）" maxlength="2000" style="flex:1">
+  <button id="sendBtn" type="submit">送信</button>
 </form>
 
 <script>
-console.log("CHAT vSAFE"); // 确认新版本
+console.log("CHAT vSAFE"); // 新バージョン確認
 
 const SERVER_URL = "wss://chat-pmq6.onrender.com";
 
-// 没有 room 就停在这里给出提示（不跳转，避免 file:// 相对路径导致回环）
+// room がない場合の警告表示（リダイレクトしない）
 const params = new URLSearchParams(location.search);
 let room = params.get('room');
 if(!room){
   document.getElementById('log').innerHTML =
-    '<div class="msg"><div class="meta">系统</div><div>没有房间ID。请先在 <a class="link" href="index.html">大厅</a> 创建或输入房间后进入。</div></div>';
+    '<div class="msg"><div class="meta">システム</div><div>ルームIDがありません。まずは <a class="link" href="index.html">ロビー</a> でルームを作成または入力してから参加してください。</div></div>';
   document.getElementById('form').style.display = 'none';
-  throw new Error('no-room'); // 终止后续逻辑
+  throw new Error('no-room');
 }
 
 const roomLink = location.href;
 const roomCopyBtn = document.getElementById('roomCopy');
 roomCopyBtn.textContent = roomLink;
-roomCopyBtn.onclick = async ()=>{ await navigator.clipboard.writeText(roomLink); roomCopyBtn.textContent="已复制 ✓"; setTimeout(()=>roomCopyBtn.textContent=roomLink,1200); };
+roomCopyBtn.onclick = async ()=>{ await navigator.clipboard.writeText(roomLink); roomCopyBtn.textContent="コピーしました ✓"; setTimeout(()=>roomCopyBtn.textContent=roomLink,1200); };
 
-// 名字
+// 名前
 let name = localStorage.getItem('retro_name');
-if(!name){ name = prompt('请输入你的昵称', 'Player_' + Math.random().toString(36).slice(2,6)) || 'Anonymous'; localStorage.setItem('retro_name', name); }
+if(!name){ name = prompt('ニックネームを入力してください', 'Player_' + Math.random().toString(36).slice(2,6)) || 'Anonymous'; localStorage.setItem('retro_name', name); }
 document.getElementById('userName').textContent = name;
 
 // UI
@@ -85,31 +85,31 @@ function connect(){
   try{
     ws = new WebSocket(SERVER_URL);
   }catch(e){
-    render({type:"system", text:`创建 WS 失败：${e?.message||e}`});
+    render({type:"system", text:`WSの作成に失敗しました：${e?.message||e}`});
     return;
   }
 
   ws.onopen = ()=> {
-    render({type:"system", text:`正在加入房间：${room} …`});
+    render({type:"system", text:`ルームに参加中：${room} …`});
     ws.send(JSON.stringify({type:"join", room, name}));
-    render({type:"system", text:`已连接到服务器（${SERVER_URL}）`});
+    render({type:"system", text:`サーバーに接続しました（${SERVER_URL}）`});
   };
 
   ws.onmessage = (ev)=>{
     let data; try{ data = JSON.parse(ev.data); }catch{ return; }
-    if (data.type === "joined") { render({type:"system", text:`已加入房间：${data.room}（欢迎加入由狂帅无敌吊炸天的陈哲飞提供技术支持的WebSocket平台）`}); return; }
-    if (data.type === "error")  { render({type:"system", text:`错误：${data.reason}`}); return; }
+    if (data.type === "joined") { render({type:"system", text:`ルームに参加しました：${data.room}（このWebSocketプラットフォームは陳哲飛による技術サポートで運営されています）`}); return; }
+    if (data.type === "error")  { render({type:"system", text:`エラー：${data.reason}`}); return; }
     if (data.type === "system") { render(data); return; }
     if (data.type === "msg")    { render(data, data.name===name); return; }
-    render({type:"system", text:`收到未知消息类型：${data.type||'无'}`});
+    render({type:"system", text:`未知のメッセージタイプを受信：${data.type||'なし'}`});
   };
 
   ws.onerror = (e)=> {
-    render({type:"system", text:`WS 发生错误：${e?.message||e}（可能被浏览器策略/扩展或网络拦截）`});
+    render({type:"system", text:`WSエラーが発生しました：${e?.message||e}（ブラウザの設定・拡張機能またはネットワークによりブロックされた可能性があります）`});
   };
 
   ws.onclose = (ev)=> {
-    render({type:"system", text:`连接已断开（code=${ev.code}）。5秒后自动重连…`});
+    render({type:"system", text:`接続が切断されました（code=${ev.code}）。5秒後に再接続します…`});
     clearTimeout(reconnectTimer);
     reconnectTimer = setTimeout(connect, 5000);
   };
@@ -117,7 +117,7 @@ function connect(){
 connect();
 
 
-// 发送
+// 送信
 const form = document.getElementById('form');
 const input = document.getElementById('input');
 form.addEventListener('submit', (e)=>{
