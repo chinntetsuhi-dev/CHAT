@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Retro Chat（哲飛1.2版 JVM環境で実行してください）</title>
+<style>
+  :root{--bg:#0b0f0c;--panel:#0e1310;--line:#213b2a;--txt:#c7f7c1;--muted:#86b28d;--accent:#91ff75}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.5 ui-monospace,Consolas,monospace;height:100dvh;display:grid;grid-template-rows:auto 1fr auto}
+  header{padding:10px 14px;background:linear-gradient(180deg,#0e1712,#0a0f0c);border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center}
+  .brand{color:var(--accent);font-weight:700;letter-spacing:.08em}
+  .room-line{margin-left:auto;color:var(--muted);font-size:12px}
+  #log{padding:12px;overflow:auto;background:
+      repeating-linear-gradient(180deg,rgba(145,255,117,.03) 0 2px,transparent 2px 4px),
+      linear-gradient(180deg,rgba(145,255,117,.02),transparent 60%)}
+  .msg{max-width:72ch;margin:8px 0;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
+  .me{border-color:#2d6b3e}
+  .meta{font-size:12px;color:var(--muted);margin-bottom:4px}
+  form{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line);background:#0a0f0c}
+  input,button{font:inherit;color:var(--txt);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px}
+  button{cursor:pointer;background:#0f1a14}
+  .mono{color:var(--accent);border:none;background:transparent;cursor:copy}
+  a.link{color:var(--accent);text-decoration:none;border-bottom:1px dashed var(--accent)}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">▮ Retro Chat（哲飛1.2版 JVM環境で実行してください）</div>
+  <div class="room-line">
+    ルーム: <button id="roomCopy" class="mono"></button>
+    <span> | </span>
+    ユーザー: <span id="userName" class="mono"></span>
+    <span> | </span>
+    <a class="link" href="index.html">ロビーに戻る</a>
+  </div>
+</header>
+<div id="log"></div>
+<form id="form">
+  <input id="input" placeholder="メッセージを入力…（Shift+Enterで改行）" maxlength="2000" style="flex:1">
+  <button id="sendBtn" type="submit">送信</button>
+</form>
+
+<script>
+console.log("CHAT vSAFE"); // 新バージョン確認
+
+const SERVER_URL = "wss://chat-pmq6.onrender.com";
+
+// room がない場合の警告表示（リダイレクトしない）
+const params = new URLSearchParams(location.search);
+let room = params.get('room');
+if(!room){
+  document.getElementById('log').innerHTML =
+    '<div class="msg"><div class="meta">システム</div><div>ルームIDがありません。まずは <a class="link" href="index.html">ロビー</a> でルームを作成または入力してから参加してください。</div></div>';
+  document.getElementById('form').style.display = 'none';
+  throw new Error('no-room');
+}
+
+const roomLink = location.href;
+const roomCopyBtn = document.getElementById('roomCopy');
+roomCopyBtn.textContent = roomLink;
+roomCopyBtn.onclick = async ()=>{ await navigator.clipboard.writeText(roomLink); roomCopyBtn.textContent="コピーしました ✓"; setTimeout(()=>roomCopyBtn.textContent=roomLink,1200); };
+
+// 名前
+let name = localStorage.getItem('retro_name');
+if(!name){ name = prompt('ニックネームを入力してください', 'Player_' + Math.random().toString(36).slice(2,6)) || 'Anonymous'; localStorage.setItem('retro_name', name); }
+document.getElementById('userName').textContent = name;
+
+// UI
+const logEl = document.getElementById('log');
+function render(m, me=false){
+  const el = document.createElement('div'); el.className = 'msg' + (me ? ' me' : '');
+  const meta = document.createElement('div'); meta.className='meta';
+  if(m.type==="system") meta.textContent = m.text;
+  else meta.textContent = `${m.name} @ ${new Date(m.ts||Date.now()).toLocaleTimeString()}`;
+  const body = document.createElement('div'); body.textContent = m.text || '';
+  el.appendChild(meta); if(m.type!=="system") el.appendChild(body);
+  logEl.appendChild(el); logEl.scrollTop = logEl.scrollHeight;
+}
+
+let ws;
+let reconnectTimer = null;
+
+function connect(){
+  try{
+    ws = new WebSocket(SERVER_URL);
+  }catch(e){
+    render({type:"system", text:`WSの作成に失敗しました：${e?.message||e}`});
+    return;
+  }
+
+  ws.onopen = ()=> {
+    render({type:"system", text:`ルームに参加中：${room} …`});
+    ws.send(JSON.stringify({type:"join", room, name}));
+    render({type:"system", text:`サーバーに接続しました（${SERVER_URL}）`});
+  };
+
+  ws.onmessage = (ev)=>{
+    let data; try{ data = JSON.parse(ev.data); }catch{ return; }
+    if (data.type === "joined") { render({type:"system", text:`ルームに参加しました：${data.room}（このWebSocketプラットフォームは陳哲飛による技術サポートで運営されています）`}); return; }
+    if (data.type === "error")  { render({type:"system", text:`エラー：${data.reason}`}); return; }
+    if (data.type === "system") { render(data); return; }
+    if (data.type === "msg")    { render(data, data.name===name); return; }
+    render({type:"system", text:`未知のメッセージタイプを受信：${data.type||'なし'}`});
+  };
+
+  ws.onerror = (e)=> {
+    render({type:"system", text:`WSエラーが発生しました：${e?.message||e}（ブラウザの設定・拡張機能またはネットワークによりブロックされた可能性があります）`});
+  };
+
+  ws.onclose = (ev)=> {
+    render({type:"system", text:`接続が切断されました（code=${ev.code}）。5秒後に再接続します…`});
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(connect, 5000);
+  };
+}
+connect();
+
+
+// 送信
+const form = document.getElementById('form');
+const input = document.getElementById('input');
+form.addEventListener('submit', (e)=>{
+  e.preventDefault();
+  const text = input.value.trim(); if(!text) return;
+  ws?.readyState===1 && ws.send(JSON.stringify({type:"msg", text}));
+  input.value = ""; input.focus();
+});
+input.addEventListener('keydown', (e)=>{
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); document.getElementById('sendBtn').click(); }
+});
+</script>
+</body>
+</html>
